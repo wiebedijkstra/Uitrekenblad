@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Interactief digitaal uitrekenblad voor basisschoolleerlingen">
+    <meta name="theme-color" content="#9333EA">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Uitrekenblad">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="manifest.json">
+    <title>Uitrekenblad</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #EFF6FF 0%, #F3E8FF 100%);
+        }
+
+        .container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            position: relative;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #9333EA;
+            text-align: center;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+
+        .palette-section {
+            flex: 1;
+            background: #F9FAFB;
+            border-radius: 6px;
+            padding: 10px;
+        }
+
+        .section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+
+        .palette {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .palette-item {
+            width: 40px;
+            height: 40px;
+            font-size: 32px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .palette-item:active {
+            opacity: 0.5;
+        }
+
+        .number-item {
+            color: #2563EB;
+        }
+
+        .operator-item {
+            color: #9333EA;
+        }
+
+        .palette-item.line-item {
+            color: #1F2937;
+            margin-top: 12px;
+            border-top: 1px solid #E5E7EB;
+            padding-top: 12px;
+            width: 100%;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            flex-shrink: 0;
+        }
+
+        .graph-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .clear-button {
+            padding: 6px 12px;
+            background: #EF4444;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .clear-button:active {
+            background: #DC2626;
+        }
+
+        #graph-paper {
+            position: relative;
+            flex: 1;
+            background: white;
+            border: 3px solid #D1D5DB;
+            border-radius: 8px;
+            background-image: 
+                linear-gradient(to right, #D1D5DB 1px, transparent 1px),
+                linear-gradient(to bottom, #D1D5DB 1px, transparent 1px);
+            background-size: 50px 50px;
+            overflow: hidden;
+        }
+
+        #graph-paper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                /* Horizontal grid line at top */
+                linear-gradient(to bottom, #D1D5DB 1px, transparent 1px),
+                /* Vertical grid line at left */
+                linear-gradient(to right, #D1D5DB 1px, transparent 1px),
+                /* First column background */
+                linear-gradient(to right, #F3F4F6 50px, transparent 50px),
+                /* First row background */
+                linear-gradient(to bottom, #F3F4F6 50px, transparent 50px);
+            background-size: 100% 50px, 50px 100%, 100% 100%, 100% 100%;
+            background-position: 0 0, 0 0, 0 0, 0 0;
+            background-repeat: repeat-y, repeat-x, no-repeat, no-repeat;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .grid-item {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            font-size: 40px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 50;
+        }
+
+        .grid-item.line {
+            height: 3px;
+            background: #1F2937;
+            font-size: 0;
+            min-width: 50px;
+            border-radius: 2px;
+            cursor: ew-resize;
+        }
+
+        .grid-item.line .resize-handle {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 30px;
+            background: #1F2937;
+            border-radius: 6px;
+            cursor: ew-resize;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+        }
+
+        .grid-item.line .resize-handle.left {
+            left: -12px;
+        }
+
+        .grid-item.line .resize-handle.right {
+            right: -12px;
+        }
+
+        .grid-item.line.active .resize-handle {
+            display: flex;
+        }
+
+        .grid-item.dragging {
+            opacity: 0.5;
+            z-index: 1000;
+        }
+
+        .grid-item.line {
+            width: auto;
+            min-width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            background: transparent;
+            border: none;
+            cursor: move;
+        }
+
+        .grid-item.line::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background: #1F2937;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        .trash-zone {
+            /* Base styles are inline, this handles hover state */
+        }
+
+        .trash-zone.hover {
+            background: rgba(254, 226, 226, 0.95) !important;
+            border-color: #EF4444 !important;
+            transform: scale(1.3) !important;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4) !important;
+        }
+
+        .trash-zone.hover .trash-icon {
+            transform: scale(1.15);
+        }
+
+        .empty-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+            color: #9CA3AF;
+            pointer-events: none;
+        }
+
+        .touch-ghost {
+            position: fixed;
+            width: 40px;
+            height: 40px;
+            font-size: 32px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 10000;
+            opacity: 0.8;
+        }
+
+        .grid-cell-highlight {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: rgba(147, 51, 234, 0.15);
+            border: 2px solid rgba(147, 51, 234, 0.4);
+            border-radius: 4px;
+            pointer-events: none;
+            z-index: 1;
+            display: none;
+        }
+
+        .trash-zone {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: linear-gradient(to top, rgba(239, 68, 68, 0.9), rgba(239, 68, 68, 0.7));
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            border-top: 3px solid #DC2626;
+        }
+
+        .trash-zone.active {
+            display: flex;
+        }
+
+        .trash-zone.highlight {
+            background: linear-gradient(to top, rgba(220, 38, 38, 1), rgba(239, 68, 68, 0.9));
+        }
+
+        .trash-icon {
+            font-size: 48px;
+            color: white;
+            pointer-events: none;
+        }
+
+        /* Install prompt styling */
+        .install-prompt {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #9333EA;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 10001;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            max-width: 90%;
+        }
+
+        .install-prompt button {
+            background: white;
+            color: #9333EA;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .install-prompt .close-btn {
+            background: transparent;
+            color: white;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">Uitrekenblad</h1>
+
+        <!-- Controls Row -->
+        <div class="controls-row">
+            <!-- Numbers Palette -->
+            <div class="palette-section">
+                <div class="section-title">Getallen</div>
+                <div class="palette" id="numbers-palette"></div>
+            </div>
+
+            <!-- Operators Palette -->
+            <div class="palette-section">
+                <div class="section-title">Bewerkingen</div>
+                <div class="palette" id="operators-palette"></div>
+            </div>
+        </div>
+
+        <!-- Graph Paper Header -->
+        <div class="header">
+            <div class="graph-title">Ruitjespapier</div>
+            <button class="clear-button" id="clear-btn">Wis alles</button>
+        </div>
+
+        <!-- Graph Paper -->
+        <div id="graph-paper">
+            <div class="grid-cell-highlight" id="grid-highlight"></div>
+            <div class="empty-message" id="empty-message">Sleep de getallen en bewerkingen hier naartoe</div>
+        </div>
+    </div>
+
+    <!-- Trash Zone - permanently visible -->
+    <div class="trash-zone" id="trash-zone" style="position: fixed; bottom: 15px; left: auto; right: 15px; width: 45px; height: 45px; background: rgba(243, 244, 246, 0.95); border: 1px solid #D1D5DB; border-radius: 8px; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; z-index: 10000; pointer-events: none; transition: all 0.2s ease; -webkit-transform: translate3d(0,0,0);">
+        <div class="trash-icon" style="font-size: 24px; pointer-events: none;">🗑️</div>
+    </div>
+
+    <!-- Install Prompt -->
+    <div class="install-prompt" id="install-prompt">
+        <span>Install Math Graph Paper to your homescreen!</span>
+        <button id="install-btn">Install</button>
+        <button class="close-btn" id="close-install">×</button>
+    </div>
+
+    <script>
+        const numbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+        const operators = ['+', '-', '×', '÷', '=', '—'];
+        const gridSize = 50;
+        let droppedItems = [];
+        let itemIdCounter = 0;
+        let currentDrag = null;
+
+        // PWA Install prompt handling
+        let deferredPrompt;
+        const installPrompt = document.getElementById('install-prompt');
+        const installBtn = document.getElementById('install-btn');
+        const closeInstallBtn = document.getElementById('close-install');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installPrompt.style.display = 'flex';
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response to the install prompt: ${outcome}`);
+                deferredPrompt = null;
+                installPrompt.style.display = 'none';
+            }
+        });
+
+        closeInstallBtn.addEventListener('click', () => {
+            installPrompt.style.display = 'none';
+        });
+
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA was installed');
+            installPrompt.style.display = 'none';
+        });
+
+        // Initialize palettes
+        function initializePalettes() {
+            const numbersPalette = document.getElementById('numbers-palette');
+            const operatorsPalette = document.getElementById('operators-palette');
+
+            numbers.forEach(num => {
+                const item = createPaletteItem(num, false);
+                numbersPalette.appendChild(item);
+            });
+
+            operators.forEach(op => {
+                const item = createPaletteItem(op, true);
+                operatorsPalette.appendChild(item);
+            });
+        }
+
+        // Create palette item
+        function createPaletteItem(value, isOperator) {
+            const div = document.createElement('div');
+            
+            // Add line-item class for the horizontal line
+            if (value === '—') {
+                div.className = `palette-item line-item`;
+            } else {
+                div.className = `palette-item ${isOperator ? 'operator-item' : 'number-item'}`;
+            }
+            
+            // Special rendering for line
+            if (value === '—') {
+                div.style.position = 'relative';
+                div.innerHTML = '<div style="width: 30px; height: 3px; background: currentColor;"></div>';
+            } else {
+                div.textContent = value;
+            }
+            
+            // Unified touch/mouse handler
+            let startX, startY, hasMoved;
+
+            const handleStart = (e) => {
+                const touch = e.touches ? e.touches[0] : e;
+                startX = touch.clientX;
+                startY = touch.clientY;
+                hasMoved = false;
+                
+                const isLine = value === '—';
+                
+                currentDrag = {
+                    type: 'new',
+                    value: value,
+                    isOperator: isOperator,
+                    isLine: isLine,
+                    startX: startX,
+                    startY: startY
+                };
+            };
+
+            const handleMove = (e) => {
+                if (!currentDrag) return;
+                e.preventDefault();
+                
+                const touch = e.touches ? e.touches[0] : e;
+                const deltaX = Math.abs(touch.clientX - startX);
+                const deltaY = Math.abs(touch.clientY - startY);
+                
+                if (deltaX > 5 || deltaY > 5) {
+                    hasMoved = true;
+                    showGhost(touch, value, isOperator);
+                    highlightGridCell(touch, value === '—' ? 50 : null, value === '—' ? 0 : undefined);
+                }
+            };
+
+            const handleEnd = (e) => {
+                if (!currentDrag || !hasMoved) {
+                    currentDrag = null;
+                    hideGhost();
+                    hideGridHighlight();
+                    return;
+                }
+                
+                const touch = e.changedTouches ? e.changedTouches[0] : e;
+                handleDrop(touch);
+                currentDrag = null;
+                hideGhost();
+                hideGridHighlight();
+            };
+
+            // Touch events
+            div.addEventListener('touchstart', handleStart, { passive: true });
+            div.addEventListener('touchmove', handleMove, { passive: false });
+            div.addEventListener('touchend', handleEnd, { passive: true });
+
+            // Mouse events
+            div.addEventListener('mousedown', handleStart);
+            div.addEventListener('mousemove', handleMove);
+            div.addEventListener('mouseup', handleEnd);
+
+            return div;
+        }
+
+        // Ghost element for visual feedback
+        let ghostElement = null;
+
+        function showGhost(touch, value, isOperator) {
+            if (!ghostElement) {
+                ghostElement = document.createElement('div');
+                ghostElement.className = `touch-ghost ${isOperator ? 'operator-item' : 'number-item'}`;
+                ghostElement.textContent = value;
+                document.body.appendChild(ghostElement);
+            }
+            ghostElement.style.left = `${touch.clientX - 20}px`;
+            ghostElement.style.top = `${touch.clientY - 20}px`;
+        }
+
+        function hideGhost() {
+            if (ghostElement) {
+                ghostElement.remove();
+                ghostElement = null;
+            }
+        }
+
+        // Grid cell highlighting
+        function highlightGridCell(touch, itemWidth, grabOffsetX) {
+            const graphPaper = document.getElementById('graph-paper');
+            const gridHighlight = document.getElementById('grid-highlight');
+            const rect = graphPaper.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+
+            // Check if within graph paper bounds
+            if (x >= 0 && x <= rect.width && y >= 0 && y <= rect.height) {
+                // Calculate which grid cell we're over
+                let gridX, gridY;
+                
+                if (itemWidth && grabOffsetX !== undefined) {
+                    // For lines, account for grab offset
+                    const adjustedX = x - grabOffsetX;
+                    gridX = Math.floor(adjustedX / gridSize);
+                    gridY = Math.floor(y / gridSize);
+                } else {
+                    gridX = Math.floor(x / gridSize);
+                    gridY = Math.floor(y / gridSize);
+                }
+                
+                // Position and size highlight
+                gridHighlight.style.left = `${gridX * gridSize}px`;
+                gridHighlight.style.top = `${gridY * gridSize}px`;
+                
+                // If item has width (line), make highlight that wide
+                if (itemWidth) {
+                    gridHighlight.style.width = `${itemWidth}px`;
+                } else {
+                    gridHighlight.style.width = `${gridSize}px`;
+                }
+                
+                gridHighlight.style.display = 'block';
+            } else {
+                gridHighlight.style.display = 'none';
+            }
+        }
+
+        function hideGridHighlight() {
+            const gridHighlight = document.getElementById('grid-highlight');
+            if (gridHighlight) {
+                gridHighlight.style.display = 'none';
+            }
+        }
+
+        // Trash zone functions
+        function checkTrashZoneHover(touch) {
+            const trashZone = document.getElementById('trash-zone');
+            if (!trashZone) return false;
+
+            const rect = trashZone.getBoundingClientRect();
+            const isOverTrash = (
+                touch.clientX >= rect.left &&
+                touch.clientX <= rect.right &&
+                touch.clientY >= rect.top &&
+                touch.clientY <= rect.bottom
+            );
+
+            if (isOverTrash) {
+                trashZone.classList.add('hover');
+            } else {
+                trashZone.classList.remove('hover');
+            }
+
+            return isOverTrash;
+        }
+
+        function isInTrashZone(touch) {
+            const trashZone = document.getElementById('trash-zone');
+            if (!trashZone) return false;
+
+            const rect = trashZone.getBoundingClientRect();
+            return (
+                touch.clientX >= rect.left &&
+                touch.clientX <= rect.right &&
+                touch.clientY >= rect.top &&
+                touch.clientY <= rect.bottom
+            );
+        }
+
+        // Handle drop on graph paper
+        function handleDrop(touch) {
+            // Check if dropped on trash zone
+            if (currentDrag.type === 'existing' && isInTrashZone(touch)) {
+                removeItem(currentDrag.item.id);
+                return;
+            }
+
+            const graphPaper = document.getElementById('graph-paper');
+            const rect = graphPaper.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+
+            // Check if drop is within graph paper
+            if (x >= 0 && x <= rect.width && y >= 0 && y <= rect.height) {
+                // Snap to grid
+                let snappedX, snappedY;
+                
+                if (currentDrag.value === '—' || (currentDrag.item && currentDrag.item.isLine)) {
+                    // For lines, account for where the line was grabbed
+                    const grabOffsetX = currentDrag.grabOffsetX || 0;
+                    const adjustedX = x - grabOffsetX;
+                    const gridX = Math.floor(adjustedX / gridSize);
+                    const gridY = Math.floor(y / gridSize);
+                    
+                    snappedX = gridX * gridSize;
+                    snappedY = gridY * gridSize + gridSize / 2;
+                } else {
+                    // For regular items, snap to center
+                    const gridX = Math.floor(x / gridSize);
+                    const gridY = Math.floor(y / gridSize);
+                    snappedX = gridX * gridSize + gridSize / 2;
+                    snappedY = gridY * gridSize + gridSize / 2;
+                }
+
+                if (currentDrag.type === 'new') {
+                    addItem(currentDrag.value, currentDrag.isOperator, snappedX, snappedY);
+                } else if (currentDrag.type === 'existing') {
+                    moveItem(currentDrag.item.id, snappedX, snappedY);
+                }
+
+                updateDisplay();
+            }
+        }
+
+        // Add new item to grid
+        function addItem(value, isOperator, x, y) {
+            const item = {
+                id: itemIdCounter++,
+                value: value,
+                isOperator: isOperator,
+                isLine: value === '—',
+                x: x,
+                y: y,
+                width: value === '—' ? 50 : undefined
+            };
+            droppedItems.push(item);
+        }
+
+        // Move existing item
+        function moveItem(id, x, y) {
+            const item = droppedItems.find(i => i.id === id);
+            if (item) {
+                item.x = x;
+                item.y = y;
+            }
+        }
+
+        // Remove item
+        function removeItem(id) {
+            droppedItems = droppedItems.filter(item => item.id !== id);
+            updateDisplay();
+        }
+
+        // Clear all items
+        function clearAll() {
+            droppedItems = [];
+            updateDisplay();
+        }
+
+        // Update display
+        function updateDisplay() {
+            const graphPaper = document.getElementById('graph-paper');
+            const emptyMessage = document.getElementById('empty-message');
+            
+            // Remove all grid items
+            const existingItems = graphPaper.querySelectorAll('.grid-item');
+            existingItems.forEach(item => item.remove());
+
+            // Show/hide empty message
+            emptyMessage.style.display = droppedItems.length === 0 ? 'block' : 'none';
+
+            // Add all items
+            droppedItems.forEach(item => {
+                const div = document.createElement('div');
+                
+                if (item.isLine) {
+                    // Render as horizontal line
+                    div.className = 'grid-item line';
+                    div.style.left = `${item.x}px`;
+                    div.style.top = `${item.y}px`;
+                    div.style.width = `${item.width}px`;
+                    div.style.transform = 'translateY(-50%)';
+                    
+                    // Add left resize handle
+                    const handleLeft = document.createElement('div');
+                    handleLeft.className = 'resize-handle left';
+                    handleLeft.textContent = '⇔';
+                    div.appendChild(handleLeft);
+                    
+                    // Add right resize handle
+                    const handleRight = document.createElement('div');
+                    handleRight.className = 'resize-handle right';
+                    handleRight.textContent = '⇔';
+                    div.appendChild(handleRight);
+                } else {
+                    // Render as number or operator
+                    div.className = `grid-item ${item.isOperator ? 'operator-item' : 'number-item'}`;
+                    div.style.left = `${item.x - 25}px`;
+                    div.style.top = `${item.y - 25}px`;
+                    div.textContent = item.value;
+                }
+
+                // Drag handlers for grid items
+                let startX, startY, hasMoved;
+                let initialX = item.x;
+                let initialY = item.y;
+                let initialWidth = item.width;
+                let isResizing = false;
+                let resizeSide = null; // 'left' or 'right'
+
+                const handleStart = (e) => {
+                    const touch = e.touches ? e.touches[0] : e;
+                    startX = touch.clientX;
+                    startY = touch.clientY;
+                    hasMoved = false;
+                    initialX = item.x;
+                    initialY = item.y;
+                    initialWidth = item.width || 50;
+                    
+                    // Remove active class from all lines when clicking non-line items
+                    const allLines = document.querySelectorAll('.grid-item.line');
+                    if (!item.isLine) {
+                        // Clicking on a number/operator - deselect all lines
+                        allLines.forEach(line => line.classList.remove('active'));
+                    } else {
+                        // Clicking on a line - deselect other lines
+                        allLines.forEach(line => {
+                            if (line !== div) {
+                                line.classList.remove('active');
+                            }
+                        });
+                    }
+                    
+                    // Check if clicking on resize handle for lines
+                    if (item.isLine && e.target.classList.contains('resize-handle')) {
+                        isResizing = true;
+                        resizeSide = e.target.classList.contains('left') ? 'left' : 'right';
+                    } else {
+                        isResizing = false;
+                        resizeSide = null;
+                    }
+                    initialY = item.y;
+                    
+                    // Calculate grab offset for lines (where on the line it was grabbed)
+                    let grabOffsetX = 0;
+                    if (item.isLine && !isResizing) {
+                        const graphPaper = document.getElementById('graph-paper');
+                        const graphRect = graphPaper.getBoundingClientRect();
+                        const touchXInGraph = touch.clientX - graphRect.left;
+                        grabOffsetX = touchXInGraph - item.x;
+                    }
+                    
+                    currentDrag = {
+                        type: 'existing',
+                        item: item,
+                        startX: startX,
+                        startY: startY,
+                        grabOffsetX: grabOffsetX
+                    };
+                    
+                    div.classList.add('dragging');
+                    
+                    // Show handles on lines when touched
+                    if (item.isLine) {
+                        div.classList.add('active');
+                    }
+                };
+
+                const handleMove = (e) => {
+                    if (!currentDrag || currentDrag.type !== 'existing') return;
+                    e.preventDefault();
+                    
+                    const touch = e.touches ? e.touches[0] : e;
+                    const deltaX = touch.clientX - startX;
+                    const deltaY = touch.clientY - startY;
+                    
+                    if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+                        hasMoved = true;
+                        
+                        if (isResizing && item.isLine) {
+                            // Resize the line - snap to grid cells
+                            if (resizeSide === 'right') {
+                                // Resize from right: increase width
+                                const rawWidth = initialWidth + deltaX;
+                                const cells = Math.max(1, Math.round(rawWidth / gridSize));
+                                const newWidth = cells * gridSize;
+                                div.style.width = `${newWidth}px`;
+                                item.width = newWidth;
+                            } else if (resizeSide === 'left') {
+                                // Resize from left: move left edge and adjust width
+                                const rawWidth = initialWidth - deltaX;
+                                const cells = Math.max(1, Math.round(rawWidth / gridSize));
+                                const newWidth = cells * gridSize;
+                                const widthDiff = newWidth - initialWidth;
+                                div.style.width = `${newWidth}px`;
+                                div.style.left = `${initialX - widthDiff}px`;
+                                item.width = newWidth;
+                                item.x = initialX - widthDiff;
+                            }
+                        } else if (item.isLine) {
+                            // Move the line - only update visual position, not item.x yet
+                            div.style.left = `${initialX + deltaX}px`;
+                            div.style.top = `${initialY + deltaY}px`;
+                        } else {
+                            // Move regular item
+                            div.style.left = `${initialX + deltaX - 25}px`;
+                            div.style.top = `${initialY + deltaY - 25}px`;
+                        }
+                        
+                        if (!isResizing) {
+                            const grabOffset = item.isLine ? currentDrag.grabOffsetX : undefined;
+                            highlightGridCell(touch, item.isLine ? item.width : null, grabOffset);
+                            checkTrashZoneHover(touch);
+                        }
+                    }
+                };
+
+                const handleEnd = (e) => {
+                    const trashZone = document.getElementById('trash-zone');
+                    if (trashZone) trashZone.classList.remove('hover');
+                    
+                    if (!currentDrag || currentDrag.type !== 'existing' || !hasMoved) {
+                        // Just a tap, not a drag - keep handles visible for lines
+                        div.classList.remove('dragging');
+                        currentDrag = null;
+                        hideGridHighlight();
+                        isResizing = false;
+                        resizeSide = null;
+                        // Don't remove 'active' class - let it stay for selection
+                        return;
+                    }
+                    
+                    // If resizing, just update width and don't move
+                    if (isResizing) {
+                        // Width already updated in handleMove
+                        div.classList.remove('dragging');
+                        currentDrag = null;
+                        isResizing = false;
+                        resizeSide = null;
+                        // Keep active class after resizing
+                        return;
+                    }
+                    
+                    const touch = e.changedTouches ? e.changedTouches[0] : e;
+                    handleDrop(touch);
+                    div.classList.remove('dragging');
+                    
+                    // Remove active from line if it was moved (dropped somewhere else)
+                    if (item.isLine) {
+                        div.classList.remove('active');
+                    }
+                    
+                    currentDrag = null;
+                    hideGridHighlight();
+                    isResizing = false;
+                    resizeSide = null;
+                };
+
+                div.addEventListener('touchstart', handleStart, { passive: true });
+                div.addEventListener('touchmove', handleMove, { passive: false });
+                div.addEventListener('touchend', handleEnd, { passive: true });
+                
+                div.addEventListener('mousedown', handleStart);
+                div.addEventListener('mousemove', handleMove);
+                div.addEventListener('mouseup', handleEnd);
+
+                graphPaper.appendChild(div);
+            });
+        }
+
+        // Initialize app
+        initializePalettes();
+        updateDisplay();
+
+        // Clear button
+        document.getElementById('clear-btn').addEventListener('click', clearAll);
+        document.getElementById('clear-btn').addEventListener('touchend', (e) => {
+            e.preventDefault();
+            clearAll();
+        });
+
+        // Register service worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Inline service worker
+                const swCode = `
+                    self.addEventListener('install', (event) => {
+                        self.skipWaiting();
+                    });
+                    
+                    self.addEventListener('activate', (event) => {
+                        event.waitUntil(clients.claim());
+                    });
+                `;
+                
+                const blob = new Blob([swCode], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(blob);
+                
+                navigator.serviceWorker.register(swUrl)
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker registration failed'));
+            });
+        }
+    </script>
+</body>
+</html>
