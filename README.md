@@ -8,27 +8,12 @@ Een interactief digitaal uitrekenblad voor basisschoolleerlingen om cijferend te
 - 📱 Werkt als native app op je telefoon
 - 🔢 Sleep getallen (0-9) naar het ruitjespapier
 - ➕ Gebruik rekenbewerkingen (+, -, ×, ÷, =)
-- ➖ **Horizontale lijn voor cijferend rekenen**
-  - Sleep de lijn naar het papier
-  - Versleep de lijn aan beide kanten om breder/smaller te maken
-  - Lijn snapt automatisch naar hele vakjes
-  - Perfect voor optellen, aftrekken, vermenigvuldigen en delen
+- ➖ Horizontale lijn voor cijferend rekenen
 - 📐 Automatisch uitlijnen op het raster
 - 🎯 Alle vakjes onder een lijn lichten op tijdens het slepen
 - 🗑️ Verwijder getallen door ze naar de prullenbak te slepen
-- 📏 Eerste rij en kolom met lichtgrijze achtergrond voor oriëntatie
 - 💾 Werkt offline na eerste bezoek
 - 🇳🇱 Volledig in het Nederlands
-
-## 🚀 Snel online krijgen (3 stappen)
-
-1. **Maak repository op GitHub.com**
-2. **Upload `index.html` en `manifest.json`**
-3. **Activeer GitHub Pages** (Settings → Pages → main branch)
-
-Klaar! Je app staat op: `https://jouwnaam.github.io/uitrekenblad/`
-
-Zie README.md voor uitgebreide instructies.
 
 ## 📱 Installeren op telefoon
 
@@ -56,6 +41,7 @@ Zie README.md voor uitgebreide instructies.
 - **PWA** - Werkt offline, installeerbaar
 - **Touch-optimized** - Voor tablets en telefoons
 - **iOS Safari compatible**
+- Ontwikkeld met Claude
 
 ---
 
