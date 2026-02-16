@@ -398,11 +398,11 @@
             <div class="grid-cell-highlight" id="grid-highlight"></div>
             <div class="empty-message" id="empty-message">Sleep de getallen en bewerkingen hier naartoe</div>
         </div>
-    </div>
-
-    <!-- Trash Zone - permanently visible -->
-    <div class="trash-zone" id="trash-zone" style="position: fixed; bottom: 15px; left: auto; right: 15px; width: 45px; height: 45px; background: rgba(243, 244, 246, 0.95); border: 1px solid #D1D5DB; border-radius: 8px; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; z-index: 10000; pointer-events: none; transition: all 0.2s ease; -webkit-transform: translate3d(0,0,0);">
-        <div class="trash-icon" style="font-size: 24px; pointer-events: none;">🗑️</div>
+        
+        <!-- Trash Zone - bottom right outside graph paper -->
+        <div class="trash-zone" id="trash-zone" style="position: fixed; bottom: 15px; left: auto; right: 15px; width: 60px; height: 60px; background: rgba(243, 244, 246, 0.95); border: 2px solid #D1D5DB; border-radius: 10px; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; z-index: 10000; pointer-events: none; transition: all 0.2s ease; -webkit-transform: translate3d(0,0,0);">
+            <div class="trash-icon" style="font-size: 32px; pointer-events: none;">🗑️</div>
+        </div>
     </div>
 
     <!-- Install Prompt -->
@@ -653,10 +653,68 @@
             );
         }
 
+        function isInPaletteZone(touch) {
+            const numbersPalette = document.getElementById('numbers-palette');
+            const operatorsPalette = document.getElementById('operators-palette');
+            
+            if (!numbersPalette || !operatorsPalette) return false;
+            
+            const numbersRect = numbersPalette.getBoundingClientRect();
+            const operatorsRect = operatorsPalette.getBoundingClientRect();
+            
+            const inNumbers = (
+                touch.clientX >= numbersRect.left &&
+                touch.clientX <= numbersRect.right &&
+                touch.clientY >= numbersRect.top &&
+                touch.clientY <= numbersRect.bottom
+            );
+            
+            const inOperators = (
+                touch.clientX >= operatorsRect.left &&
+                touch.clientX <= operatorsRect.right &&
+                touch.clientY >= operatorsRect.top &&
+                touch.clientY <= operatorsRect.bottom
+            );
+            
+            return inNumbers || inOperators;
+        }
+
+        // Check if a line would overlap with any existing items
+        function lineOverlapsItems(lineX, lineY, lineWidth, excludeItemId) {
+            // Calculate which cells the line occupies
+            // Line Y is at the middle of a row (e.g., 25 for row 0, 75 for row 1)
+            // Items Y is also at the middle of a row
+            const lineStartCell = Math.floor(lineX / gridSize);
+            const lineEndCell = Math.floor((lineX + lineWidth - 1) / gridSize);
+            const lineRow = Math.round((lineY - gridSize/2) / gridSize); // Convert middle position to row index
+            
+            // Check if any non-line items are in these cells
+            return droppedItems.some(item => {
+                // Skip the line itself if we're moving/resizing it
+                if (item.id === excludeItemId) return false;
+                
+                // Only check non-line items
+                if (item.isLine) return false;
+                
+                // Get item's cell position (items are also centered in cells)
+                const itemCol = Math.floor(item.x / gridSize);
+                const itemRow = Math.round((item.y - gridSize/2) / gridSize);
+                
+                // Check if item is in the same row and within the line's column range
+                return itemRow === lineRow && itemCol >= lineStartCell && itemCol <= lineEndCell;
+            });
+        }
+
         // Handle drop on graph paper
         function handleDrop(touch) {
             // Check if dropped on trash zone
             if (currentDrag.type === 'existing' && isInTrashZone(touch)) {
+                removeItem(currentDrag.item.id);
+                return;
+            }
+
+            // Check if dropped back on palette zone (delete it)
+            if (currentDrag.type === 'existing' && isInPaletteZone(touch)) {
                 removeItem(currentDrag.item.id);
                 return;
             }
@@ -680,12 +738,47 @@
                     
                     snappedX = gridX * gridSize;
                     snappedY = gridY * gridSize + gridSize / 2;
+                    
+                    // Check if line would overlap with existing items
+                    const lineWidth = currentDrag.item ? currentDrag.item.width : 50;
+                    const excludeId = currentDrag.type === 'existing' ? currentDrag.item.id : null;
+                    
+                    if (lineOverlapsItems(snappedX, snappedY, lineWidth, excludeId)) {
+                        // Line would overlap - don't place it
+                        if (currentDrag.type === 'existing') {
+                            updateDisplay(); // Reset to old position
+                        }
+                        return;
+                    }
                 } else {
                     // For regular items, snap to center
                     const gridX = Math.floor(x / gridSize);
                     const gridY = Math.floor(y / gridSize);
                     snappedX = gridX * gridSize + gridSize / 2;
                     snappedY = gridY * gridSize + gridSize / 2;
+                    
+                    // Check if there's already an item at this position (only for non-line items)
+                    const existingItem = droppedItems.find(item => {
+                        // Skip the item we're currently moving
+                        if (currentDrag.type === 'existing' && item.id === currentDrag.item.id) {
+                            return false;
+                        }
+                        // Check if item is in the same cell (not lines, only numbers/operators)
+                        if (!item.isLine) {
+                            return Math.abs(item.x - snappedX) < 5 && Math.abs(item.y - snappedY) < 5;
+                        }
+                        return false;
+                    });
+                    
+                    // If cell is occupied, don't place the item
+                    if (existingItem) {
+                        // If moving an existing item, refresh display to show it at old position
+                        if (currentDrag.type === 'existing') {
+                            updateDisplay();
+                        }
+                        // If dragging from palette, item is not added (nothing to do)
+                        return;
+                    }
                 }
 
                 if (currentDrag.type === 'new') {
@@ -906,9 +999,18 @@
                         return;
                     }
                     
-                    // If resizing, just update width and don't move
+                    // If resizing, check for overlap and reset if needed
                     if (isResizing) {
-                        // Width already updated in handleMove
+                        // Check if the resized line overlaps with any items
+                        if (lineOverlapsItems(item.x, item.y, item.width, item.id)) {
+                            // Overlap detected - reset to original width
+                            item.width = initialWidth;
+                            if (resizeSide === 'left') {
+                                item.x = initialX;
+                            }
+                            updateDisplay();
+                        }
+                        
                         div.classList.remove('dragging');
                         currentDrag = null;
                         isResizing = false;
